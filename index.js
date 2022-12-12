@@ -113,36 +113,39 @@ async function printFolderData() {
 }
 
 async function compress(pathToFile) {
-    try {
       const read = createReadStream(path.join(cwd(), pathToFile));
       read.on("error", err => console.log(failedMessage))
       const compress = createWriteStream(path.join(cwd(), `${pathToFile}.gz`));
       compress.on("error", err => console.log(failedMessage))
       await pipeline(
-        createReadStream(path.join(cwd(), pathToFile)),
+        read,
         zlib.createGzip(),
-        createWriteStream(path.join(cwd(), `${pathToFile}.gz`)),
+        compress,
+        (err) => {
+          if (err) {
+            throw new Error(err);
+          }
+        }
       )
-    } catch {
-      console.log(failedMessage);
-    }
 }
 
 async function decompress(pathToFile) {
-  try {
-    const read = createReadStream(path.join(cwd(), pathToFile));
-    read.on("error", err => console.log(failedMessage))
-    const decompressName = pathToFile.split('.').slice(0, pathToFile.length - 2);
-    const decompress = createWriteStream(path.join(cwd(), decompressName));
-    decompress.on("error", err => console.log(failedMessage))
-    await pipeline(
-        read,
-        zlib.createGzip(),
-        compress
-    )
-  } catch {
-    console.log(failedMessage);
-  }
+  const read = createReadStream(path.join(cwd(), pathToFile));
+  read.on("error", err => console.log(failedMessage));
+  const decompressNameArr = pathToFile.split('.');
+  decompressNameArr.pop()
+  const decompress = createWriteStream(path.join(cwd(), decompressNameArr.join('')));
+  decompress.on("error", err => console.log(failedMessage))
+  await pipeline(
+      read,
+      zlib.createGzip(),
+      decompress,
+    (err) => {
+      if (err) {
+        throw new Error(err);
+      }
+    }
+  )
 }
 
 const validOperations = ['.exit', 'cat', 'add', 'up', 'cd', 'ls', 'rn', 'cp', 'mv',
